@@ -1,0 +1,827 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Belajar Waktu - Indonesian Time Learning</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;800;900&display=swap');
+        
+        body {
+            font-family: 'Nunito', sans-serif;
+            background-color: #0f172a; /* slate-900 */
+            color: white;
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            touch-action: none; 
+        }
+
+        /* App Container */
+        #app-container {
+            position: relative;
+            width: 100%;
+            max-width: 480px; /* Mobile optimal, but scales well */
+            height: 100vh;
+            margin: 0 auto;
+            background: linear-gradient(180deg, #38bdf8 0%, #0369a1 100%);
+            overflow: hidden;
+            box-shadow: 0 0 20px rgba(0,0,0,0.5);
+            display: flex;
+            flex-direction: column;
+        }
+
+        .screen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            z-index: 10;
+            background: inherit;
+            transition: opacity 0.3s ease;
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+        /* Menu Styles */
+        .menu-btn {
+            background: #f59e0b;
+            color: white;
+            border: none;
+            padding: 16px 24px;
+            font-size: 1.25rem;
+            font-weight: 800;
+            border-radius: 16px;
+            cursor: pointer;
+            box-shadow: 0 6px 0 #b45309;
+            transition: transform 0.1s, box-shadow 0.1s;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            width: 80%;
+            max-width: 300px;
+            margin: 10px auto;
+            display: block;
+        }
+        .menu-btn:active {
+            transform: translateY(6px);
+            box-shadow: 0 0 0 #b45309;
+        }
+        .menu-btn.alt {
+            background: #10b981;
+            box-shadow: 0 6px 0 #047857;
+        }
+        .menu-btn.alt:active { box-shadow: 0 0 0 #047857; }
+
+        /* Quiz Styles */
+        .quiz-option {
+            background: white;
+            color: #1e293b;
+            border: 3px solid #cbd5e1;
+            padding: 12px 20px;
+            margin: 6px 20px;
+            border-radius: 12px;
+            font-size: 1.1rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.2s;
+            text-align: center;
+            line-height: 1.3;
+        }
+        .quiz-option:hover {
+            background: #f1f5f9;
+            transform: scale(1.02);
+        }
+        .quiz-option.correct {
+            background: #34d399;
+            color: white;
+            border-color: #059669;
+        }
+        .quiz-option.wrong {
+            background: #f87171;
+            color: white;
+            border-color: #dc2626;
+        }
+
+        /* Runner Game Styles */
+        #game3DContainer {
+            position: absolute;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            background-color: #050510;
+        }
+        .runner-ui {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            pointer-events: none;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            z-index: 20;
+        }
+        #runner-hud {
+            padding: 15px;
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            pointer-events: auto;
+        }
+        .score-pill {
+            background: rgba(0, 0, 0, 0.6);
+            padding: 8px 16px;
+            border-radius: 20px;
+            backdrop-filter: blur(5px);
+            font-weight: 800;
+            font-size: 1.2rem;
+            border: 2px solid #0ea5e9;
+            color: #38bdf8;
+            box-shadow: 0 0 10px #0ea5e9;
+        }
+        #runner-question {
+            background: rgba(0,0,0,0.7);
+            color: #fde047;
+            padding: 10px 20px;
+            border-radius: 12px;
+            font-weight: 900;
+            font-size: 1.1rem;
+            text-align: center;
+            border: 2px solid #facc15;
+            box-shadow: 0 0 15px rgba(250, 204, 21, 0.5);
+            max-width: 50%;
+            pointer-events: none;
+        }
+        .touch-zone {
+            position: absolute; bottom: 0; width: 50%; height: 70vh;
+            pointer-events: auto; z-index: 25;
+        }
+        #touch-left { left: 0; }
+        #touch-right { right: 0; }
+        
+        .top-bar {
+            padding: 15px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: rgba(0,0,0,0.2);
+        }
+        .back-btn {
+            background: #ef4444; color: white; border: none;
+            padding: 8px 16px; border-radius: 8px; font-weight: bold;
+            cursor: pointer; pointer-events: auto;
+            box-shadow: 0 4px 0 #b91c1c;
+        }
+        .back-btn:active { transform: translateY(4px); box-shadow: 0 0 0 #b91c1c; }
+
+        .overlay {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(5, 5, 16, 0.85);
+            display: flex; flex-direction: column; justify-content: center; align-items: center;
+            pointer-events: auto; z-index: 30; text-align: center; padding: 20px;
+            backdrop-filter: blur(4px);
+        }
+
+    </style>
+</head>
+<body>
+
+<div id="app-container">
+    
+    <!-- MAIN MENU SCREEN -->
+    <div id="screen-menu" class="screen justify-center items-center">
+        <div class="text-center mb-10">
+            <h1 class="text-5xl font-black mb-2 text-white drop-shadow-lg">Belajar Waktu</h1>
+            <p class="text-xl text-sky-100 font-semibold mb-6">Indonesian Time Learning</p>
+            <div class="bg-white/20 p-4 rounded-xl mx-6 shadow-inner text-sm mb-6">
+                Welcome! Choose a game mode to test your knowledge of Indonesian time telling.
+            </div>
+        </div>
+        
+        <div class="w-full flex flex-col gap-4">
+            <button class="menu-btn" onclick="startQuizMode()">
+                👁️ Observe Quiz
+            </button>
+            <button class="menu-btn alt" onclick="startRunnerMode()">
+                🚀 3D Runner Game
+            </button>
+        </div>
+    </div>
+
+    <!-- QUIZ MODE SCREEN -->
+    <div id="screen-quiz" class="screen hidden" style="background: #f8fafc;">
+        <div class="top-bar bg-white shadow-sm text-slate-800">
+            <button class="back-btn bg-slate-200 text-slate-700 hover:bg-slate-300 shadow-none" onclick="backToMenu()">← Back</button>
+            <div class="font-bold text-lg">Score: <span id="quiz-score" class="text-blue-600">0</span></div>
+        </div>
+        
+        <div class="flex-1 flex flex-col items-center justify-start p-4 overflow-y-auto">
+            <div class="bg-blue-100 text-blue-900 px-6 py-2 rounded-full font-bold mt-2 mb-4 text-sm shadow-sm" id="quiz-counter">Question 1/10</div>
+            
+            <div class="w-full max-w-md bg-white rounded-2xl shadow-lg p-6 mb-4 text-center border-b-4 border-blue-200 flex flex-col items-center">
+                <p class="text-gray-500 font-bold mb-4">What time does the clock show?</p>
+                <!-- Canvas for dynamic analog clock -->
+                <canvas id="quiz-clock-canvas" width="200" height="200" class="mb-2 drop-shadow-md"></canvas>
+                <p id="quiz-hint" class="text-sm text-slate-400 italic mt-2">Observe carefully...</p>
+            </div>
+
+            <div id="quiz-options" class="w-full max-w-md flex flex-col pb-6">
+                <!-- Options injected here -->
+            </div>
+            
+            <div id="quiz-feedback" class="mt-2 text-xl font-bold h-8 transition-all"></div>
+        </div>
+    </div>
+
+    <!-- RUNNER GAME SCREEN -->
+    <div id="screen-runner" class="screen hidden">
+        <div id="game3DContainer"></div>
+        
+        <div id="touch-left" class="touch-zone"></div>
+        <div id="touch-right" class="touch-zone"></div>
+
+        <div class="runner-ui">
+            <div id="runner-hud">
+                <button class="back-btn" onclick="backToMenu()">← Menu</button>
+                <div id="runner-question" class="shadow-lg">Observation</div>
+                <div class="score-pill shadow-lg"><span id="runner-score">0</span></div>
+            </div>
+            <div class="text-center pb-8 text-white/50 text-sm font-bold tracking-widest uppercase text-shadow">
+                Tap Sides or Swipe to Move
+            </div>
+        </div>
+
+        <!-- Runner Game Over Overlay -->
+        <div id="runner-game-over" class="overlay hidden">
+            <h2 class="text-5xl font-black mb-2 text-red-500 drop-shadow-md" style="text-shadow: 0 0 20px #ef4444;">CRASHED!</h2>
+            <p class="text-2xl mb-4 text-white">Score: <span id="runner-final-score" class="text-yellow-400 font-black">0</span></p>
+            
+            <div class="bg-slate-800/80 p-6 rounded-xl border border-slate-600 mb-8 max-w-xs shadow-xl">
+                <p class="text-sm text-slate-400 uppercase font-bold mb-1">Correct Answer was:</p>
+                <p id="runner-correction" class="text-xl text-emerald-400 font-black"></p>
+            </div>
+            
+            <button class="menu-btn alt mb-4" onclick="initRunnerGame()">🔄 Play Again</button>
+            <button class="menu-btn" style="background:#64748b; box-shadow: 0 6px 0 #334155;" onclick="backToMenu()">🏠 Main Menu</button>
+        </div>
+    </div>
+
+</div>
+
+<script>
+    // --- DATA & VOCABULARY ---
+    // Added hours (h) and minutes (m) to draw the analog clocks dynamically.
+    const vocabData = [
+        { h: 3, m: 30, a: "Setengah empat", w: ["Tiga tiga puluh", "Setengah tiga", "Jam empat"] },
+        { h: 8, m: 15, a: "Jam delapan lewat seperempat", w: ["Jam delapan kurang seperempat", "Setengah delapan", "Jam sembilan"] },
+        { h: 10, m: 45, a: "Jam sebelas kurang seperempat", w: ["Jam sepuluh lewat", "Setengah sebelas", "Jam sebelas"] },
+        { h: 12, m: 0, a: "Jam dua belas", w: ["Jam satu", "Setengah dua belas", "Jam dua belas lewat seperempat"] },
+        { h: 7, m: 0, a: "Jam tujuh", w: ["Jam enam", "Jam delapan", "Setengah tujuh"] },
+        { h: 5, m: 20, a: "Jam lima lewat dua puluh", w: ["Jam lima kurang dua puluh", "Setengah lima", "Jam enam"] },
+        { h: 1, m: 30, a: "Setengah dua", w: ["Setengah satu", "Jam dua", "Satu setengah"] },
+        { h: 9, m: 45, a: "Jam sepuluh kurang seperempat", w: ["Jam sembilan kurang", "Setengah sepuluh", "Jam sepuluh"] },
+        { h: 4, m: 10, a: "Jam empat lewat sepuluh", w: ["Jam sepuluh lewat empat", "Jam empat kurang sepuluh", "Setengah lima"] },
+        { h: 2, m: 50, a: "Jam tiga kurang sepuluh", w: ["Jam dua kurang sepuluh", "Jam tiga lewat sepuluh", "Setengah tiga"] },
+        { h: 6, m: 5, a: "Jam enam lewat lima", w: ["Jam lima lewat enam", "Jam enam kurang lima", "Setengah tujuh"] },
+        { h: 11, m: 30, a: "Setengah dua belas", w: ["Setengah sebelas", "Jam sebelas", "Jam dua belas"] }
+    ];
+
+    function shuffleArray(array) {
+        let arr = [...array];
+        for (let i = arr.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [arr[i], arr[j]] = [arr[j], arr[i]];
+        }
+        return arr;
+    }
+
+    // --- NAVIGATION LOGIC ---
+    const screenMenu = document.getElementById('screen-menu');
+    const screenQuiz = document.getElementById('screen-quiz');
+    const screenRunner = document.getElementById('screen-runner');
+
+    function hideAllScreens() {
+        screenMenu.classList.add('hidden');
+        screenQuiz.classList.add('hidden');
+        screenRunner.classList.add('hidden');
+        runnerActive = false; // Stop 3D game loop
+    }
+
+    function backToMenu() {
+        hideAllScreens();
+        screenMenu.classList.remove('hidden');
+    }
+
+    // --- DRAW ANALOG CLOCK FUNCTION ---
+    function drawAnalogClock(canvasId, h, m) {
+        const canvas = document.getElementById(canvasId);
+        if (!canvas) return;
+        const ctx = canvas.getContext('2d');
+        const radius = canvas.width / 2;
+        
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        
+        ctx.save();
+        ctx.translate(radius, radius);
+        
+        // Draw Outer Frame
+        ctx.beginPath();
+        ctx.arc(0, 0, radius * 0.95, 0, 2 * Math.PI);
+        ctx.fillStyle = 'white';
+        ctx.fill();
+        ctx.lineWidth = radius * 0.1;
+        ctx.strokeStyle = '#0ea5e9'; // sky-500
+        ctx.stroke();
+
+        // Draw Ticks & Numbers
+        ctx.font = `bold ${radius * 0.25}px Nunito`;
+        ctx.textBaseline = "middle";
+        ctx.textAlign = "center";
+        ctx.fillStyle = '#1e293b';
+
+        for(let num = 1; num <= 12; num++){
+            let ang = num * Math.PI / 6;
+            ctx.rotate(ang);
+            ctx.translate(0, -radius * 0.72);
+            ctx.rotate(-ang);
+            ctx.fillText(num.toString(), 0, 0);
+            ctx.rotate(ang);
+            ctx.translate(0, radius * 0.72);
+            ctx.rotate(-ang);
+        }
+
+        // Calculate Hand Angles
+        // Hour hand moves gradually as minutes pass
+        let hourAngle = (h % 12) * Math.PI / 6 + (m * Math.PI / (6 * 60));
+        let minuteAngle = m * Math.PI / 30;
+
+        // Draw Hour Hand
+        ctx.beginPath();
+        ctx.lineWidth = radius * 0.08;
+        ctx.lineCap = "round";
+        ctx.strokeStyle = '#0f172a';
+        ctx.moveTo(0, 0);
+        ctx.rotate(hourAngle);
+        ctx.lineTo(0, -radius * 0.45);
+        ctx.stroke();
+        ctx.rotate(-hourAngle);
+
+        // Draw Minute Hand
+        ctx.beginPath();
+        ctx.lineWidth = radius * 0.06;
+        ctx.lineCap = "round";
+        ctx.strokeStyle = '#64748b';
+        ctx.moveTo(0, 0);
+        ctx.rotate(minuteAngle);
+        ctx.lineTo(0, -radius * 0.65);
+        ctx.stroke();
+        ctx.rotate(-minuteAngle);
+
+        // Center Dot
+        ctx.beginPath();
+        ctx.arc(0, 0, radius * 0.08, 0, 2 * Math.PI);
+        ctx.fillStyle = '#ef4444'; // red-500
+        ctx.fill();
+
+        ctx.restore();
+    }
+
+
+    // ==========================================
+    // MODE 1: OBSERVATION QUIZ
+    // ==========================================
+    let quizScore = 0;
+    let quizQuestionIndex = 0;
+    let quizQuestions = [];
+
+    const quizScoreEl = document.getElementById('quiz-score');
+    const quizCounterEl = document.getElementById('quiz-counter');
+    const quizOptionsEl = document.getElementById('quiz-options');
+    const quizFeedbackEl = document.getElementById('quiz-feedback');
+
+    function startQuizMode() {
+        hideAllScreens();
+        screenQuiz.classList.remove('hidden');
+        
+        quizScore = 0;
+        quizQuestionIndex = 0;
+        quizScoreEl.innerText = quizScore;
+        
+        // Pick 10 random questions
+        quizQuestions = shuffleArray(vocabData).slice(0, 10);
+        loadQuizQuestion();
+    }
+
+    function loadQuizQuestion() {
+        if (quizQuestionIndex >= quizQuestions.length) {
+            document.getElementById('quiz-hint').innerText = "Quiz Complete!";
+            const canvas = document.getElementById('quiz-clock-canvas');
+            const ctx = canvas.getContext('2d');
+            ctx.clearRect(0,0,canvas.width, canvas.height); // clear clock
+            
+            // Draw a trophy or text
+            ctx.font = "bold 40px Nunito";
+            ctx.fillStyle = "#f59e0b";
+            ctx.textAlign = "center";
+            ctx.fillText("🏆", canvas.width/2, canvas.height/2);
+
+            quizOptionsEl.innerHTML = `<button class="menu-btn mt-8" onclick="backToMenu()">Finish</button>`;
+            quizCounterEl.innerText = `Final Score: ${quizScore} / ${quizQuestions.length * 10}`;
+            quizFeedbackEl.innerText = "";
+            return;
+        }
+
+        const qData = quizQuestions[quizQuestionIndex];
+        quizCounterEl.innerText = `Question ${quizQuestionIndex + 1} of ${quizQuestions.length}`;
+        quizFeedbackEl.innerText = "";
+
+        // Draw the analog clock based on data
+        drawAnalogClock('quiz-clock-canvas', qData.h, qData.m);
+
+        // Prepare options
+        let options = [{ text: qData.a, correct: true }];
+        qData.w.forEach(wText => options.push({ text: wText, correct: false }));
+        options = shuffleArray(options).slice(0, 4); // Show max 4
+
+        quizOptionsEl.innerHTML = "";
+        options.forEach(opt => {
+            const btn = document.createElement('button');
+            btn.className = 'quiz-option';
+            btn.innerText = opt.text;
+            btn.onclick = () => handleQuizAnswer(btn, opt.correct, qData.a);
+            quizOptionsEl.appendChild(btn);
+        });
+    }
+
+    function handleQuizAnswer(btn, isCorrect, correctAnswer) {
+        // Disable all buttons
+        const allBtns = quizOptionsEl.querySelectorAll('.quiz-option');
+        allBtns.forEach(b => b.disabled = true);
+
+        if (isCorrect) {
+            btn.classList.add('correct');
+            quizFeedbackEl.innerText = "🎉 Benar! (Correct!)";
+            quizFeedbackEl.className = "mt-2 text-xl font-bold h-8 transition-all text-emerald-500";
+            quizScore += 10;
+            quizScoreEl.innerText = quizScore;
+        } else {
+            btn.classList.add('wrong');
+            quizFeedbackEl.innerText = `❌ Salah! (Wrong!)`;
+            quizFeedbackEl.className = "mt-2 text-lg font-bold h-8 transition-all text-red-500";
+            // Highlight correct one
+            allBtns.forEach(b => {
+                if(b.innerText === correctAnswer) b.classList.add('correct');
+            });
+        }
+
+        setTimeout(() => {
+            quizQuestionIndex++;
+            loadQuizQuestion();
+        }, 2000);
+    }
+
+
+    // ==========================================
+    // MODE 2: 3D RUNNER GAME (THREE.JS)
+    // ==========================================
+    let scene, camera, renderer;
+    let runnerPlayer, roadGroup;
+    let obstacleGroup = [];
+    
+    let runnerActive = false;
+    let runnerScore = 0;
+    let runnerSpeed = 0.4;
+    let playerTargetX = 0;
+    let currentLane = 1; // 0: Left, 1: Center, 2: Right
+    const LANE_WIDTH = 3.5;
+    
+    let currentRQuestion = null;
+
+    // Wait for window load to ensure container has dimensions
+    window.onload = function() {
+        initThreeJS();
+    };
+
+    function initThreeJS() {
+        const container = document.getElementById('game3DContainer');
+        
+        scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x050510);
+        scene.fog = new THREE.Fog(0x050510, 10, 80); // Cool fade out in distance
+
+        camera = new THREE.PerspectiveCamera(60, container.clientWidth / container.clientHeight, 0.1, 100);
+        camera.position.set(0, 4, 12); // Elevated behind player
+        camera.lookAt(0, 0, 0);
+
+        renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(container.clientWidth, container.clientHeight);
+        renderer.setPixelRatio(window.devicePixelRatio);
+        container.appendChild(renderer.domElement);
+
+        // Lighting (Cyberpunk / Neon vibe)
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+        scene.add(ambientLight);
+
+        const dirLight = new THREE.DirectionalLight(0x0ea5e9, 0.8);
+        dirLight.position.set(-10, 20, 10);
+        scene.add(dirLight);
+
+        const pinkLight = new THREE.PointLight(0xdb2777, 1, 50);
+        pinkLight.position.set(5, 2, 5);
+        scene.add(pinkLight);
+
+        // Create Grid Road
+        roadGroup = new THREE.Group();
+        scene.add(roadGroup);
+
+        // Road surface
+        const roadGeo = new THREE.PlaneGeometry(LANE_WIDTH * 3 + 2, 200);
+        const roadMat = new THREE.MeshStandardMaterial({ 
+            color: 0x0f172a, 
+            roughness: 0.2, 
+            metalness: 0.8 
+        });
+        const roadMesh = new THREE.Mesh(roadGeo, roadMat);
+        roadMesh.rotation.x = -Math.PI / 2;
+        roadMesh.position.z = -50;
+        roadGroup.add(roadMesh);
+
+        // Lane Dividers (Neon Lines)
+        const lineGeo = new THREE.PlaneGeometry(0.1, 200);
+        const lineMat = new THREE.MeshBasicMaterial({ color: 0x38bdf8 });
+        
+        const lineLeft = new THREE.Mesh(lineGeo, lineMat);
+        lineLeft.rotation.x = -Math.PI / 2;
+        lineLeft.position.set(-LANE_WIDTH/2, 0.01, -50);
+        roadGroup.add(lineLeft);
+
+        const lineRight = new THREE.Mesh(lineGeo, lineMat);
+        lineRight.rotation.x = -Math.PI / 2;
+        lineRight.position.set(LANE_WIDTH/2, 0.01, -50);
+        roadGroup.add(lineRight);
+
+        // Player (Glowing Hover Vehicle / Cube)
+        const playerGeo = new THREE.BoxGeometry(1.2, 1, 2);
+        const playerMat = new THREE.MeshStandardMaterial({ 
+            color: 0xf43f5e,
+            emissive: 0x9f1239,
+            emissiveIntensity: 0.5,
+            roughness: 0.4
+        });
+        runnerPlayer = new THREE.Mesh(playerGeo, playerMat);
+        runnerPlayer.position.set(0, 0.5, 6); // Fixed Z near camera
+        scene.add(runnerPlayer);
+
+        // Resize handler
+        window.addEventListener('resize', onWindowResize, false);
+    }
+
+    function onWindowResize() {
+        const container = document.getElementById('game3DContainer');
+        if(!container || container.clientWidth === 0) return;
+        camera.aspect = container.clientWidth / container.clientHeight;
+        camera.updateProjectionMatrix();
+        renderer.setSize(container.clientWidth, container.clientHeight);
+    }
+
+    // Helper to generate textures with text for the 3D blocks
+    function createTextTexture(text, isCorrect) {
+        const canvas = document.createElement('canvas');
+        canvas.width = 512;
+        canvas.height = 256;
+        const ctx = canvas.getContext('2d');
+        
+        // Panel Background
+        ctx.fillStyle = '#1e293b'; 
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        
+        // Neon Border
+        ctx.lineWidth = 15;
+        ctx.strokeStyle = '#0ea5e9';
+        ctx.strokeRect(0, 0, canvas.width, canvas.height);
+
+        // Text Styling
+        ctx.fillStyle = '#ffffff';
+        ctx.font = 'bold 36px Nunito, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        
+        // Simple Word Wrap
+        var words = text.split(' ');
+        var line = '';
+        var linesArr = [];
+        for(var n = 0; n < words.length; n++) {
+            var testLine = line + words[n] + ' ';
+            var metrics = ctx.measureText(testLine);
+            if (metrics.width > 460 && n > 0) {
+                linesArr.push(line);
+                line = words[n] + ' ';
+            } else {
+                line = testLine;
+            }
+        }
+        linesArr.push(line);
+        
+        let lineHeight = 45;
+        let startY = 128 - ((linesArr.length - 1) * lineHeight) / 2;
+        linesArr.forEach(l => {
+            ctx.fillText(l.trim(), 256, startY);
+            startY += lineHeight;
+        });
+
+        const texture = new THREE.CanvasTexture(canvas);
+        return texture;
+    }
+
+    function spawnObstacles() {
+        // Clear old obstacles
+        obstacleGroup.forEach(obs => {
+            scene.remove(obs.mesh);
+            obs.mesh.material.forEach(m => {
+                if(m.map) m.map.dispose();
+                m.dispose();
+            });
+            obs.mesh.geometry.dispose();
+        });
+        obstacleGroup = [];
+
+        // Pick a question
+        const qData = vocabData[Math.floor(Math.random() * vocabData.length)];
+        currentRQuestion = qData;
+        
+        // Update HUD
+        const qText = `${String(qData.h).padStart(2,'0')}:${String(qData.m).padStart(2,'0')}`;
+        document.getElementById('runner-question').innerText = `Target: ${qText}`;
+
+        // Prepare 3 Answers
+        let answers = [{ text: qData.a, isCorrect: true }];
+        let wrongs = shuffleArray(qData.w).slice(0, 2);
+        wrongs.forEach(w => answers.push({ text: w, isCorrect: false }));
+        answers = shuffleArray(answers);
+
+        // Spawn 3 Blocks
+        const startZ = -60; // Far away
+        for (let i = 0; i < 3; i++) {
+            const laneX = (i - 1) * LANE_WIDTH; // -3.5, 0, 3.5
+            
+            const tex = createTextTexture(answers[i].text, answers[i].isCorrect);
+            
+            // Box with text on front face
+            const geo = new THREE.BoxGeometry(LANE_WIDTH * 0.85, 2.5, 1);
+            
+            // Materials for the 6 faces. Front face gets the text map.
+            const matDark = new THREE.MeshStandardMaterial({ color: 0x0f172a });
+            const matFront = new THREE.MeshBasicMaterial({ map: tex });
+            
+            // Right, Left, Top, Bottom, Front, Back
+            const materials = [matDark, matDark, matDark, matDark, matFront, matDark];
+
+            const mesh = new THREE.Mesh(geo, materials);
+            mesh.position.set(laneX, 1.25, startZ);
+            
+            scene.add(mesh);
+            obstacleGroup.push({
+                mesh: mesh,
+                isCorrect: answers[i].isCorrect,
+                lane: i, // 0, 1, 2
+                active: true
+            });
+        }
+    }
+
+
+    function startRunnerMode() {
+        hideAllScreens();
+        document.getElementById('screen-runner').classList.remove('hidden');
+        
+        // Ensure size is correct after unhiding
+        setTimeout(() => {
+            onWindowResize();
+            initRunnerGame();
+        }, 50);
+    }
+
+    function initRunnerGame() {
+        runnerScore = 0;
+        runnerSpeed = 0.5; // Initial speed moving towards +z
+        currentLane = 1;
+        playerTargetX = 0;
+        runnerPlayer.position.x = 0;
+        
+        document.getElementById('runner-score').innerText = runnerScore;
+        document.getElementById('runner-game-over').classList.add('hidden');
+        
+        spawnObstacles();
+        
+        runnerActive = true;
+        animateRunner();
+    }
+
+    function animateRunner() {
+        if (!runnerActive) return;
+        requestAnimationFrame(animateRunner);
+
+        // Animate Player Lane Switching (Lerp)
+        runnerPlayer.position.x += (playerTargetX - runnerPlayer.position.x) * 0.15;
+        // Add slight tilt when moving
+        runnerPlayer.rotation.z = (runnerPlayer.position.x - playerTargetX) * 0.1;
+
+        // Move Obstacles towards player
+        let passedPlayer = false;
+        
+        obstacleGroup.forEach(obs => {
+            if (!obs.active) return;
+            
+            obs.mesh.position.z += runnerSpeed;
+
+            // Collision Detection
+            // Player is at Z = 6. Hitbox from roughly Z = 5 to 7.
+            if (obs.mesh.position.z > 5 && obs.mesh.position.z < 7) {
+                // Check if in same lane
+                if (Math.abs(obs.mesh.position.x - runnerPlayer.position.x) < LANE_WIDTH * 0.5) {
+                    obs.active = false; // Trigger once
+                    
+                    if (obs.isCorrect) {
+                        // Success!
+                        runnerScore += 10;
+                        document.getElementById('runner-score').innerText = runnerScore;
+                        runnerSpeed += 0.02; // Speed up slightly
+                        
+                        // Visual pop
+                        obs.mesh.position.y += 2; 
+                        
+                        // Spawn next wave immediately
+                        setTimeout(spawnObstacles, 100); 
+                    } else {
+                        // Crash!
+                        gameOverRunner();
+                    }
+                }
+            }
+
+            if (obs.mesh.position.z > 12) {
+                passedPlayer = true;
+                obs.active = false;
+            }
+        });
+
+        // If obstacles passed without hitting the correct one -> Game Over
+        if (passedPlayer && runnerActive) {
+            // Check if we missed the correct one
+            const correctObs = obstacleGroup.find(o => o.isCorrect);
+            if (correctObs && correctObs.mesh.position.z > 10) {
+                gameOverRunner();
+            }
+        }
+
+        // Texture Scroll Effect on Road (Optional logic if needed, but we move objects instead)
+
+        renderer.render(scene, camera);
+    }
+
+    function gameOverRunner() {
+        runnerActive = false;
+        document.getElementById('runner-game-over').classList.remove('hidden');
+        document.getElementById('runner-final-score').innerText = runnerScore;
+        document.getElementById('runner-correction').innerText = currentRQuestion.a;
+    }
+
+    // Runner Controls
+    function setLane(newLane) {
+        if (!runnerActive) return;
+        currentLane = Math.max(0, Math.min(2, newLane));
+        playerTargetX = (currentLane - 1) * LANE_WIDTH; // -3.5, 0, 3.5
+    }
+
+    // Touch Zones
+    document.getElementById('touch-left').addEventListener('touchstart', (e) => { e.preventDefault(); setLane(currentLane - 1); });
+    document.getElementById('touch-right').addEventListener('touchstart', (e) => { e.preventDefault(); setLane(currentLane + 1); });
+    document.getElementById('touch-left').addEventListener('mousedown', () => setLane(currentLane - 1));
+    document.getElementById('touch-right').addEventListener('mousedown', () => setLane(currentLane + 1));
+
+    // Swipe controls anywhere on screen
+    let touchStartX = 0;
+    document.getElementById('screen-runner').addEventListener('touchstart', e => { 
+        touchStartX = e.changedTouches[0].screenX; 
+    }, {passive: true});
+    
+    document.getElementById('screen-runner').addEventListener('touchend', e => {
+        let touchEndX = e.changedTouches[0].screenX;
+        if (touchEndX < touchStartX - 40) setLane(currentLane - 1); // Swipe Left
+        if (touchEndX > touchStartX + 40) setLane(currentLane + 1); // Swipe Right
+    }, {passive: true});
+
+    // Keyboard
+    window.addEventListener('keydown', (e) => {
+        if (!runnerActive) return;
+        if (e.key === 'ArrowLeft' || e.key === 'a') setLane(currentLane - 1);
+        if (e.key === 'ArrowRight' || e.key === 'd') setLane(currentLane + 1);
+    });
+
+</script>
+</body>
+</html>
